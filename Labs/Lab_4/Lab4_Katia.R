@@ -33,9 +33,12 @@ getwd()
 
 ## set up working directory 
 
-my_directory   <- "/Users/aidapacheco-applegate/Desktop/PhD/Summer 2026/Data for Policy Analysis/"
+my_directory   <- "/home/kbouali/UChicago_Student/2_Data_For_Policy_Analys_-_Mgmt/"
+my_directory
 my_data        <- paste0(my_directory, "Data/")
-output_dir     <- paste0(my_directory, "Classes/Class 4/")
+my_data 
+output_dir     <- paste0(my_directory, "Classes/Class_4/")
+output_dir
 
 #------------------------------------------------------------------------------#
 # 2. Load dataset
