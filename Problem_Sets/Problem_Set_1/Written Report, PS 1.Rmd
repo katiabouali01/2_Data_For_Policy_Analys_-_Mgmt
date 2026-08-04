@@ -2,8 +2,116 @@
 title: "Problem Set #1: Exploring Wage Differences in the U.S. Early Care and Education Workforce"
 output: html_document
 date: "2026-08-03"
----
 
+##
+## Problem Set 1 
+## Data Prep & Descriptives: NSECE 2019 Workforce Questionaire
+## Katia Bouali
+## R Version 4.5.2
+##
+---
+```{r Set up}
+## Set up 
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(forcats)
+library(ggplot2)
+
+
+describe_num <- function(x) {
+  x <- x[!is.na(x)]
+  data.frame(
+    n = length(x), mean = mean(x), sd = sd(x), median = median(x),
+    min = min(x), max = max(x), range = max(x) - min(x),
+    skew = mean((x - mean(x))^3) / sd(x)^3
+  )
+}
+
+freq_table <- function(x) {
+  x <- x[!is.na(x)]
+  tab <- table(x)
+  data.frame(category = names(tab), n = as.integer(tab),
+             pct = round(100 * as.integer(tab) / length(x), 1))
+}
+
+
+## Load data
+load("~/UChicago_Student/2_Data_For_Policy_Analys_-_Mgmt/Data/37941-0005-Data.rda")
+nsece_raw <- da37941.0005 
+
+## Subset to variables
+nsece <- nsece_raw %>%
+  select(
+    WF9_WORK_WAGE,
+    WF9_WORK_ROLE,
+    WF9_WORK_YRS,
+    WF9_CHAR_HISP,
+    WF9_CHAR_RACE,
+    WF9_CHAR_EDUC,
+    WF9_CHAR_GENDER
+  )
+
+## Rename variables
+nsece <- nsece %>%
+  rename(
+    wage       = WF9_WORK_WAGE,
+    role       = WF9_WORK_ROLE,
+    yrs_worked = WF9_WORK_YRS,
+    hispanic   = WF9_CHAR_HISP,
+    race       = WF9_CHAR_RACE,
+    educ       = WF9_CHAR_EDUC,
+    gender     = WF9_CHAR_GENDER
+  )
+
+## Missing data
+
+nsece %>%
+  summarise(across(everything(), ~ sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "n_missing") %>%
+  mutate(pct_missing = round(100 * n_missing / nrow(nsece), 1))
+
+
+## Recode
+# role, hispanic, race,gender: nominal -> leace as unordered factors (already are)
+# edu, yrs_worked: ordinal -> set explixit order so later tests treat them correctly
+
+
+nsece <- nsece %>%
+  mutate(
+    educ = factor(educ, levels = c(
+      "(1) Less than High School",
+      "(3) GED or high school equivalency",
+      "(4) High school graduate",
+      "(5) Some college credit but no degree",
+      "(6) Associate degree (AA, AS)",
+      "(7) Bachelor's degree (BA, BS, AB)",
+      "(8) Graduate or professional degree"
+    ), ordered = TRUE),
+    
+    yrs_worked = factor(yrs_worked, levels = c(
+      "(01) Less than half a year (0-6 months)", "(02) 7-12 months",
+      "(03) 1 year", "(04) 2 years", "(05) 3 years", "(06) 4 years",
+      "(07) 5 years", "(08) 6 years", "(09) 7 years", "(10) 8 years",
+      "(11) 9 years", "(12) 10 years", "(13) 11 to 15 years",
+      "(14) 16 to 20 years", "(15) 21 to 25 years", "(16) 26 or more years"
+    ), ordered = TRUE)
+  )
+
+## Level of measurment/variable type
+
+# wage        -> interval/ratio, continuous   (hourly dollar amount; true zero)
+# role        -> nominal, discrete            (3 categories: Aide/asst, Teacher/lead, Other)
+# yrs_worked  -> ORDINAL, discrete            (16 bins of unequal width, e.g. "11 to 15 years" -
+#                                               NOT a raw count, so treat as ordinal, not ratio)
+# hispanic    -> nominal, discrete            (binary)
+# race        -> nominal, discrete            (4 categories: White, Black, Asian, Other)
+# educ        -> ORDINAL, discrete            (7 ranked categories, unequal spacing)
+# gender      -> nominal, discrete            (binary)
+
+## Descriptive Statistics
+
+```
 **Question 1: Data Preparation and Descriptive Statistics**
 
 *The analytic sample was drawn from the NSECE 2019 Questionnaire (N=5,192) and subset to seven variables: hourly wage, staff role, years worked in the program, Hispanic/Latino ethnicity, race, educational attainment, and gender. Each variable was classified by level of measurement to guide the choice of descriptive statistics and, layer, inferential tests.*
@@ -12,9 +120,6 @@ date: "2026-08-03"
 
 ```{r Figure 1}
 # -- Wage (continuous) -- Figure 1. Distribution of hourly wage.
-
-
-describe_num(nsece$wage)
 
 
 ggplot(nsece, aes(x = wage)) +
