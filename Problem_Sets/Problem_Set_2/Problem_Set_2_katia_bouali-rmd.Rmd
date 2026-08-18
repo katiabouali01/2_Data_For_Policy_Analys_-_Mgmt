@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 
+## Load data
 load("~/UChicago_Student/2_Data_For_Policy_Analys_-_Mgmt/Data/37941-0005-Data.rda")
 
 nsece_raw <- da37941.0005
@@ -480,7 +481,7 @@ regression_data <- nsece %>%
 nrow(regression_data)
 summary(regression_data)
 ```
-*The regression was estimated using 3,780 complete obersations. Respondents missing any variable included in model were excluded through complete case analysis.*
+*The regression was estimated using 3,780 complete observations. Respondents missing any variable included in model were excluded through complete case analysis.*
 ```{r}
 #OLS REGRESSION
 depression_model <- lm(
