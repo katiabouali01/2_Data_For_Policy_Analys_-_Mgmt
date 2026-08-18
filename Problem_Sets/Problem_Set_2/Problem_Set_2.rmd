@@ -1,5 +1,5 @@
 ---
-title: "Problem_Set_2_"
+title: "Problem_Set_2"
 output: html_document
 date: "2026-08-17"
 ## Understanding Factors Affecting the Early Care and Education Workforce in the United States
