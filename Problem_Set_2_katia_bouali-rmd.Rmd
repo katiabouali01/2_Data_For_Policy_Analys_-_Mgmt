@@ -1,0 +1,578 @@
+---
+title: "Problem_Set_2_"
+output: html_document
+date: "2026-08-17"
+## Understanding Factors Affecting the Early Care and Education Workforce in the United States
+## Katia Bouali 
+## R Version 4.5.2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+load("~/UChicago_Student/2_Data_For_Policy_Analys_-_Mgmt/Data/37941-0005-Data.rda")
+
+nsece_raw <- da37941.0005
+```
+
+**1. Data cleaning and descriptive analysis**
+
+*Data Prep*
+*I used the data from the 2019 National Survey of Early Care and Education center-based workforce survey. I retained six variables: hourly wage, staff role, race, educational attainment, birth year, and the CESD-7 depression score. I rennamed the variables to make them easier to identify in the analysis.*
+
+*Following the instructions provided in the problem set pdf, I calculated staff age by subtracting the respondent's birth year from 2019. I then divided staff into three age categories: between 20 and 40, between 41 and 50, and more than 51. I also divided hourly wages into four categories: $10 or less, between $11 and $20, between $21 and $30, and more than $31.* 
+
+*The original dataset contained 5,192 observations. Missing data were present for hourly wage, role, race, education, birth year, and depression. I retained these missing values as na. The descriptive percentages presented below are valid percenatgesm meaning that they are calculated among respondents with nonmissing data for each variable.* 
+
+*The public-use birth-year variable groups some respondents into broader categories to preserve confidentiality. Therefore, the calculated ages are approximate for those respondents. However, I followed the age calculation explicitly required by the assignment.*
+
+**Levels of measurement**
+*Staff role is a nominal, discrete variable. It is nominal because its categories identify different occupational roles without placing them in a meaningful numerical order. It is discrete because respondents can belong only to one of a limited number of categories.*
+
+*Race is also a nominal, discrete variable. The racial categories are qualitatively different, but they do not have a natural ranking. Each respondent is placed into one of four observed categories.*
+
+*Educational attainment is an ordinal, discrete variable. It is ordinal because the categories progress from lower to higher levels of educational attainment. It is discrete because respondents are assigned to a limited number of educational categories.*
+
+*The CESD-7 depression score is treated as an interval/ratio, discrete variable. It is quantitative because differences between depression scores have numerical meaning. It is discrete because the score can take only a limited set of possible values between 0 and 21.*
+
+*The staff-age category is an ordinal, discrete variable. The categories have a meaningful progression from younger to older staff, but the variable contains only three possible groups.*
+
+*The hourly wage category is also an ordinal, discrete variable. Its four cateogires progress from lower to higher wages*
+
+
+```{r}
+#SELECT AND RENAME VARIABLES
+nsece <- nsece_raw %>%
+  select(
+    WF9_WORK_WAGE,
+    WF9_WORK_ROLE,
+    WF9_CHAR_RACE,
+    WF9_CHAR_EDUC,
+    WF9_CHAR_YEAR_BORN,
+    WF9_CESD7_TOT
+  ) %>%
+  rename(
+    hr_wage = WF9_WORK_WAGE,
+    role = WF9_WORK_ROLE,
+    race = WF9_CHAR_RACE,
+    education = WF9_CHAR_EDUC,
+    birth_year = WF9_CHAR_YEAR_BORN,
+    depression = WF9_CESD7_TOT
+  )
+
+str(nsece)
+summary(nsece)
+
+table(nsece$role, useNA = "ifany")
+table(nsece$race, useNA = "ifany")
+table(nsece$education, useNA = "ifany")
+
+
+
+#CREATE AGE AND WAGE CATEGORIES
+nsece <- nsece %>%
+  mutate(
+    staff_age = 2019 - birth_year,
+
+    staff_age_new = case_when(
+      staff_age >= 20 & staff_age <= 40 ~ "Between 20 and 40",
+      staff_age >= 41 & staff_age <= 50 ~ "Between 41 and 50",
+      staff_age >= 51 ~ "More than 51"
+    ),
+
+    staff_age_new = factor(
+      staff_age_new,
+      levels = c(
+        "Between 20 and 40",
+        "Between 41 and 50",
+        "More than 51"
+      )
+    ),
+
+    hr_wage_new = case_when(
+      hr_wage <= 10 ~ "Less than $10",
+      hr_wage > 10 & hr_wage <= 20 ~ "Between $11 and $20",
+      hr_wage > 20 & hr_wage <= 30 ~ "Between $21 and $30",
+      hr_wage > 30 ~ "More than $31"
+    ),
+
+    hr_wage_new = factor(
+      hr_wage_new,
+      levels = c(
+        "Less than $10",
+        "Between $11 and $20",
+        "Between $21 and $30",
+        "More than $31"
+      )
+    )
+  )
+
+summary(nsece)
+colSums(is.na(nsece))
+
+```
+
+```{r}
+#FREQUENCY TABLES AND GRAPHS
+
+#Staff Role
+#Table 1. Frequency and percentage distribution of staff role
+role_table <- table(
+  nsece$role,
+  useNA = "ifany"
+)
+
+role_percent <- round(
+  prop.table(table(nsece$role)) * 100,
+  2
+)
+
+role_table
+role_percent
+
+#Figure 1. Percenatge distribution of staff role among respondents with valid data
+barplot(
+  role_percent,
+  horiz = TRUE,
+  las = 1,
+  col = "steelblue",
+  main = "Distribution of Staff Roles",
+  xlab = "Percentage",
+  names.arg = c(
+    "Aide or assistant",
+    "Teacher or lead teacher",
+    "Other/undetermined"
+  ),
+  xlim = c(0, 70)
+)
+```
+*Among the 4,708 respondents with valif staff-role data, 65.40% were teachers, instructors, or lead teachers. Aides and assistant teachers represented 34.22%, while only 0.38% were classified as 'other' or 'undetermined'. The modal staff role was therefore: teacher, instructor, or lead teacher.*
+
+*The distribution was heavily concentrated in the two primary classroom roles. The 'other' or 'undetermined' category contained only 18 respondents. Because this group was extremely small, comparisons involving it may be imprecise.*
+
+*Staff role was missing for 484 respondents, representing approximately 9.3% of the full sample.*
+
+
+```{r}
+#Race
+#Table 2. Frequency and percentage distribution of race
+race_table <- table(
+  nsece$race,
+  useNA = "ifany"
+)
+
+race_percent <- round(
+  prop.table(table(nsece$race)) * 100,
+  2
+)
+
+race_table
+race_percent
+
+#Figure 2. Racial distribution of ECE staff with valid race data
+barplot(
+  race_percent,
+  horiz = TRUE,
+  las = 1,
+  col = "darkseagreen",
+  main = "Racial Distribution of ECE Staff",
+  xlab = "Percentage",
+  names.arg = c(
+    "White",
+    "Black",
+    "Asian",
+    "Other"
+  ),
+  xlim = c(0, 70)
+)
+
+```
+*Among the 4,241 respondents with valid race data, 66.61% were White, making White staff the modal racial category. Black or African American staff represented 23.37%, Asian staff represented 4.95%, and staff classified as 'other' reprsented 5.07%.*
+
+*The racial distribution was uneven, with approximately two-thirds of respondents with valid data included in the White category. The Asian and 'other' categories were considerably smaller, which may reduce the precision of comparisons involving these groups.*
+
+*Race was missing for 951 respondents, or approximately 18.3% of the full sample. This was the highest level of missingness among the variables included in the analysis.*
+
+
+```{r}
+#Educational Attainment
+#Table 3. Frequency and percentage distribution of educational attainment 
+education_table <- table(
+  nsece$education,
+  useNA = "ifany"
+)
+
+education_percent <- round(
+  prop.table(table(nsece$education)) * 100,
+  2
+)
+
+education_table
+education_percent
+
+#Figure 3. Educational attinment among ECE staff with valid data
+barplot(
+  education_percent,
+  horiz = TRUE,
+  las = 1,
+  col = "mediumpurple",
+  main = "Educational Attainment",
+  xlab = "Percentage",
+  names.arg = c(
+    "Less than high school",
+    "GED/equivalency",
+    "High school graduate",
+    "Some college",
+    "Associate degree",
+    "Bachelor's degree",
+    "Graduate degree"
+  ),
+  xlim = c(0, 30),
+  cex.names = 0.8
+)
+
+```
+*Educational attainment was distributed across seven ordered categories. Among the 4,685 respondents with valid education data, the modal category was some college credit without a degree, representing 27.30%. The second-largest group held a bachelor's degree, representing 24.93%.*
+
+*Associate-degree holders represented 17.80%, and high-school graduates represented 16.41%. Graduate or professional degree holders accounted for 9.05%. The two smallest categories were GED or high-school equivalency at 2.69% and less than high school at 1.81%*
+
+*The median educational category was an associate degreee. This means the midpoint of the ordered educational distribution fell within the associate degree category.*
+
+*Overall, the findings show considerable educational diversity in the ECE workforce. Although approximately one-third of repondents had at least a bachelor's degree, many staff members had attended college without earning a four-year degree.*
+
+*Education was missing for 507 respondents, or approximately 9.8% of the total sample.*
+
+
+```{r}
+#Staff age 
+#Table 4. Frequency and percentage distribution of staff age category
+age_table <- table(
+  nsece$staff_age_new,
+  useNA = "ifany"
+)
+
+age_percent <- round(
+  prop.table(table(nsece$staff_age_new)) * 100,
+  2
+)
+
+age_table
+age_percent
+
+#Figure 4. Age distribution of ECE staff with valid age data
+barplot(
+  age_percent,
+  col = "coral",
+  main = "Age Distribution of ECE Staff",
+  xlab = "Age Category",
+  ylab = "Percentage",
+  names.arg = c(
+    "20-40",
+    "41-50",
+    "More than 51"
+  ),
+  ylim = c(0, 60)
+)
+
+```
+*Among the 4,497 respondents with valid age data, 54.46% were bewteen 20 and 40, making this both the modal and median age category. Staff between 41 and 50 represented 19.90%, while staff older than 51 represented 25.64%*
+
+*The age distribution indicates that slightly more then half of the observed workforce was included in the youngest category. At the same time, approximately one-quarter of staff were older than 51, showing that the ECE workforce also included a substanital group of older educators.*
+
+*Age was missing for 695 respondents, representing approximately 13.4% of the original sample*
+
+
+```{r}
+#Hourly wage
+#Table 5. Frequency and percentage distribution of hourly wage category
+wage_table <- table(
+  nsece$hr_wage_new,
+  useNA = "ifany"
+)
+
+wage_percent <- round(
+  prop.table(table(nsece$hr_wage_new)) * 100,
+  2
+)
+
+wage_table
+wage_percent
+
+#Figure 5. Hourly wage distribution among ECE staff with valid wage data
+barplot(
+  wage_percent,
+  col = "goldenrod",
+  main = "Hourly-Wage Distribution",
+  xlab = "Hourly-Wage Category",
+  ylab = "Percentage",
+  names.arg = c(
+    "$10 or less",
+    "$11-$20",
+    "$21-$30",
+    "More than $31"
+  ),
+  ylim = c(0, 65),
+  cex.names = 0.8
+)
+```
+
+```{r}
+#DEPRESSION STATISTICS
+mean(nsece$depression, na.rm = TRUE)
+median(nsece$depression, na.rm = TRUE)
+var(nsece$depression, na.rm = TRUE)
+sd(nsece$depression, na.rm = TRUE)
+range(nsece$depression, na.rm = TRUE)
+IQR(nsece$depression, na.rm = TRUE)
+
+#Table 6. Descriptive statistics for the CESD-7 depression score
+depression_frequency <- table(
+  nsece$depression
+)
+
+depression_frequency
+
+depression_mode <- names(
+  which.max(depression_frequency)
+)
+
+depression_mode
+
+sum(
+  nsece$depression >= 8,
+  na.rm = TRUE
+)
+
+mean(
+  nsece$depression >= 8,
+  na.rm = TRUE
+) * 100
+
+
+#Figure 6. Distribution of CESD-7 depression scores
+hist(
+  nsece$depression,
+  breaks = seq(-0.5, 21.5, by = 1),
+  main = "Distribution of Depression Scores",
+  xlab = "CESD-7 Depression Score",
+  ylab = "Frequency",
+  col = "lightblue",
+  border = "white"
+)
+
+abline(
+  v = 8,
+  col = "red",
+  lty = 2,
+  lwd = 2
+)
+```
+*The mean depression score was 2.52, while the median was 1 and the mode was 0. The dispersion was 10.37, and the standard deviation was 3.22. This means that depression scores typically differed from the mean by approximately 3.22 points.*
+
+*Depression scores ranged from 0 to 21, producing a range of 21 points. The interquartile range was 4. The first quartile was 0, and the third quartile was 4, meaning that the middle 50% of valid depression scores fell between 0 and 4.* 
+
+*The mean was higher than both the median and mode, and the histogram showed that most observations were concentrated near the lower end of the scale with a long atil extending toward higher scores. Therefore, the depression score distribution was positive, or right-skewed.*
+
+*Among the 4,537 respondents with valid depression data, 356 had scores of 8 or higher.This represented approximately 7.85% of respondents with valid depression scores. According to the cutoff described in the assingment, these respondents may have symptoms consistent with major depressive disorder. This is a screening threshold and should'nt be interpreted as a clincical diagnosis.*
+
+*Depression was missing for 655 respondents, or approximately 12.6% of the original sample.*
+
+```{r}
+#REFERENCE GROUPS
+sort(table(nsece$role), decreasing = TRUE)
+sort(table(nsece$race), decreasing = TRUE)
+sort(table(nsece$education), decreasing = TRUE)
+
+role_reference <- names(
+  which.max(table(nsece$role))
+)
+
+race_reference <- names(
+  which.max(table(nsece$race))
+)
+
+education_reference <- names(
+  which.max(table(nsece$education))
+)
+
+nsece <- nsece %>%
+  mutate(
+    role = relevel(
+      role,
+      ref = role_reference
+    ),
+    race = relevel(
+      race,
+      ref = race_reference
+    ),
+    education = relevel(
+      education,
+      ref = education_reference
+    ),
+    staff_age_new = relevel(
+      staff_age_new,
+      ref = "Between 20 and 40"
+    ),
+    hr_wage_new = relevel(
+      hr_wage_new,
+      ref = "Less than $10"
+    )
+  )
+
+levels(nsece$role)
+levels(nsece$race)
+levels(nsece$education)
+levels(nsece$staff_age_new)
+levels(nsece$hr_wage_new)
+#The first category printed for each variable is its reference group
+```
+*For staff role, race, and education, I selected the largest observed category as the reference group. Using the most common category provides a comparatively large and stable baseline for interpreting the other coefficients.*
+
+*The reference categories were*
+*Teacher, instructor, or lead teacher for staff role*
+*White for race*
+*Some college credit without a degree for education*
+*Between 20 and 40 for age*
+*$10 or less for hourly wage*
+
+```{r}
+#DUMMY VARIABLES
+dummy_variables <- model.matrix(
+  ~ role +
+    race +
+    education +
+    staff_age_new +
+    hr_wage_new,
+  data = nsece
+)
+
+# Remove the intercept column
+dummy_variables <- dummy_variables[, -1]
+
+head(dummy_variables)
+dim(dummy_variables)
+
+```
+*For each categorical predictor with k categories, I created k-binary variables. Each vairable equals 1 when a respondent belongs to thecategory and 0 otherwise. The omitted category serves as the reference group.*
+
+*The five categorical predictors produced 16 dummy variables*
+*Two for staff role*
+*Three for race*
+*Six for education*
+*Two for age*
+*Three for wage*
+
+```{r}
+#REGRESSION DATASET
+regression_data <- nsece %>%
+  select(
+    depression,
+    hr_wage_new,
+    role,
+    staff_age_new,
+    education,
+    race
+  ) %>%
+  na.omit()
+
+nrow(regression_data)
+summary(regression_data)
+```
+*The regression was estimated using 3,780 complete obersations. Respondents missing any variable included in model were excluded through complete case analysis.*
+```{r}
+#OLS REGRESSION
+depression_model <- lm(
+  depression ~
+    hr_wage_new +
+    role +
+    staff_age_new +
+    education +
+    race,
+  data = regression_data
+)
+
+summary(depression_model)
+```
+**OLS regression results**
+**Staff Role**
+*Holding wage, age, education, and race constant, aides and assitant teachers had predicted depression scores approximately 0.24 points lower than teachers, instructors, and lead teachers. This association was statistically significant at the 0.05 level (b=-0.241, p=.037)*
+*Staff classified as other or undertmined had predicted depression scores approximately 0.44 points higher than teachers or lead teachers. However, this difference was not statistically significant (p=.614). The absence of statistical significance may partly reflect the extremely small size of this group.*
+
+**Staff age**
+*Holding the other independent variables constant, staff between 41 and 50 had predicted depression scores approximately 0.47 points lower than staff between 20 and 40. This association was statistically significant (b=-0.467, p=.001).*
+*Staff older than 51 had predicted depression scores approximately 1.29 points lower than staff between 20 and 40, controlling for the other vairables. This association was statistically significant at p<.001*
+*Age produced some of the largest statistically significant coefficients in the model. The results indicate that older staff reported lower depression scores than staff between 20 and 40 after controlling for wage, role, education, and race.*
+
+**Educational attainment* 
+*The reference category for education was some college credit without a degree.*
+*Holding the other variables constant, high school graduates had predicted depression scores approximately 0.48 points lower than staff with some college but no degree. This association was statistically significant (b=-0.479, p=.004)*
+*Staff with associate degrees also had predicted depression scores approximately 0.48 points lower than staff with some college but no degree. This association was statistically significant (b=-0.480, p=.004)*
+*The coefficients for less than high school, GED or high school equivalency, bachelor's degree or graduate or professional degree were not statistically significant at the 0.05 level. Therefore, the model does not provide sufficient evidence that these groups differed from the some college reference group after controlling for the other predictors.*
+*The bachelor's and graduate degree coefficients were negative and approached satistical significance, but their p-values remained above the assigned 0.05 threshold. They should not be described as statistically significant.*
+
+**Race**
+*The reference category for race was White staff*
+*Holding wage, role, age, and education constant, staff classified in the 'other' racial category had predicted depression scores approximately 0.54 points higher than White staff. This association was satistically significant (b=0.539, p=.026)*
+*The coefficients for Black and Asian staff were positive but not statistically significant. Therefore, the model does not provide sufficient evidence that the predicted depression scores of Black and Asian staff differed from those of White staff after controlling for the other variables.*
+*The 'other' category combines respondents who may have substantially different racial or ethnic identities. Consequently, the coefficient should be interpreted cautiously.*
+
+**Hourly wage**
+*None of the hourly-wage categories were statically significant at the 0.05 level. Relative to staff in the assignment's lowest wage categiry, the estimated coefficients for the $11-$20, $21-$30, and more than $31 categories were all small and negative.*
+*After controlling for role, age, education, and race, the model did not provide sufficient evidence of an association between hourly wage category and depression. A nonsignificant result does not prove that wage is unrelated to depression. It indicates that this particular model did not detect a statistically significant adjusted differnce acorss the wage categories.* 
+
+**Overall model fit**
+*The models R^2 was 0.03465. This means that staff role, race, education, age, and hourly wage jointly explained approximately 3.47% of the observed variation in depression scores.*
+*The adjusted R^2 was 0.03054, meaning that the midel explained approximately 3.05% of the variation after accounting for the number of predictors. The small difference between R^2 and adjusted R^2 indicates that the adjustment for model complexity only slightly reduced the estimated explanatory power.*
+*The overall regression was statistically significant, F(16,3763)=8.441, p<.001. Therefore, the predictors were jointly associated with depression, even though the model explained only a small proportion of the total variation.*
+*A low R^2 does not automatically mean that a model is useless, particularly when the purpose is to exmaine associations rather than make highly accurate indivdual predictions.*
+
+**Note** *The regression analysis was based on 3,780 respondents with complete data on depression, hourly wage, role, age education, and race, out of 5,192 respondents in the full sample. Respondents with missing data on any of these variables were excluded. This means results may not generalize to staff with missing survey reponses, who could differ systematically from those with complete data*
+
+**Overall Conclusions**
+*The clearest pattern in the model concerned staff age. Staff between 41 and 50 and staff older than 51 reported significantly lower depression scores than staff between 20 and 40. The largest adjusted difference was observed for staff older than 51*
+*Staff role was also associated with depression. Aides and assistant teachers had slightly lower predicted depression scores than teachers and lead teachers. Educarional attainment showed a limited association: high school graduates and aossciate degree holders had lower predicted cores than staff with some college but no degree.*
+*Staff classified in the 'other' racial category had higher predicted depression scores than White staff. No statistically significant differences were detected for Black or Asian staff relative to White staff.*
+*Hourly wage category was not statistically significant after accounting for the other characteristics. Overall, the findings suggest that age, selected educational categories, staff role, and one racial category were associated with depression. However, these characteristics explained only a small portion of the overall spread in depression scores.*
+*The findings should be interpreted as associations rather than casusal effects. The regression does not establish that age, role, education, race, or wage causes changes in depression. Unmeasured factors such as workload, enviornment, benefits, stabilty, health, and other factors can also be associated with and affect educator depression.*
+
+```{r}
+#RESIDUAL DIAGNOSTICS
+plot(
+  fitted(depression_model),
+  residuals(depression_model),
+  main = "Residuals Versus Fitted Values",
+  xlab = "Fitted Depression Scores",
+  ylab = "Residuals",
+  pch = 16,
+  col = "darkblue"
+)
+
+abline(
+  h = 0,
+  col = "red",
+  lty = 2
+)
+
+hist(
+  residuals(depression_model),
+  main = "Histogram of Model Residuals",
+  xlab = "Residual",
+  ylab = "Frequency",
+  col = "lightblue",
+  breaks = 20
+)
+```
+
+**Regression diagnostics**
+**Residual versus fitted plot contained serveral vertaical bands. These bands were expected because all of the independent variables were categorical. Respondents with the same combination of  categorical characteristics recieve the same or similar fitted values.*
+*The presence of vertical bands alone does not demonstrate a violation of linearity. However, the residuals were not perfectly symmetrical around zero. Many observations were concentrated slightly below zero, while a smaller number had large positive residuals.*
+*This pattern indicates that the model tended to overpredict depression for many respondents with loe observed depression scores while substantially underpredicting depression for a smaller group with high scores. The model therefore performed less well for respondents with unusually high depressive symptom scores.*
+*The plot did not display the balanced, random cloud of residuals that would represent an ideal fit. If the vertical spread changed across the fitted values, this also suggests that the homoscedasticity assumption may not have been fully met.*
+
+**Residual histogram**
+*The residual histogram was positively or right-skewed rather than approximately bell-shaped. Most residuals were concentrated near or slightly below zero, while a long tail extended toward large positive residuals. The regression residuals ranged from approximately -4.02 to 18.57.*
+*Therefore, the normality assumption was not fully met. One likely explanation is that the depression score is a bounded, discrete measure ranging from 0 to 21. Because the mode was 0 and the median was 1, many respondents reported few or no depressive symptoms.*
+*The model can predict depression values above zero for respondents whose observed scores are zero, or very low, producing negative residuals. However, the lower bound of zero limits the size of these negative residuals. In contrast, the smaller group of respondents with high depression scores can produce much larger positive residuals. This creates the asymmetry and long right tail visible in the diagnostic plots.*
+*Overall, the diagnostic plots suggest that normality was not fully satisfied and that homoscedasticity may also be questionable. The categorical predictors explain the visible vertical bands but do not alone establish a linearity violation. Because the analytic sample was large, the nonormal residual distribution may be less concerning than it would be in small sample. Yet the coefficient tests and substantive conclusions should still be interpreted cautiously.*
